@@ -27,7 +27,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://whire.ai"
 Documentation = "https://docs.whire.ai"
-Repository = "https://github.com/whire-ai/whire-sdk-python"
+Repository = "https://github.com/whire-ai/whire-python-sdk"
 
 [project.optional-dependencies]
 dev = [
