@@ -1,7 +1,33 @@
-.pytest_cache/
+# Python
 __pycache__/
-.venv/
-.coverage
+*.py[cod]
+*.egg-info/
+*.egg
+
+# Build / dist
 build/
 dist/
-*.py[cod]
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
