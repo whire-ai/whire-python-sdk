@@ -4,7 +4,9 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/whire.svg)](https://pypi.org/project/whire/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-**Payment infrastructure built specifically for AI agents.** Whire bridges the gap between unpredictable LLMs and rigid financial APIs. It provides a native agent toolkit and MCP server, allowing your LLMs to safely and programmatically execute instant SEPA payments and direct debits in Europe.
+**Payment infrastructure built specifically for AI agents.**
+
+It provides a native agent toolkit and MCP server, allowing your Agents to safely execute instant payments.
 
 ### See it in action:
 
@@ -34,7 +36,7 @@ async def run_agent():
     # Example Prompt: "Claude, pay my €150 AWS hosting bill to Alice Martin."
 
     # Initialize the toolkit with our public sandbox key
-    async with WhireToolkit(api_key="whire_test_mock123", environment=Environment.SANDBOX) as toolkit:
+    async with WhireToolkit(api_key="whire_test_key", environment=Environment.SANDBOX) as toolkit:
 
         # Step 1: Agent autonomously creates the recipient
         recipient = await toolkit.execute("create_recipient", {
@@ -74,7 +76,7 @@ Add this to your Claude Desktop config (`claude_desktop_config.json`):
         "whire.mcp_server"
       ],
       "env": {
-        "WHIRE_API_KEY": "whire_test_mock123"
+        "WHIRE_API_KEY": "whire_test_key"
       }
     }
   }
@@ -98,7 +100,7 @@ For backend engineers who want to bypass the AI toolkit and use Whire as a tradi
 ```python
 from whire import WhireClient, Environment
 
-async with WhireClient(api_key="whire_test_mock123", environment=Environment.SANDBOX) as client:
+async with WhireClient(api_key="whire_test_key", environment=Environment.SANDBOX) as client:
     # 1. Create a recipient
     recipient = await client.create_recipient(
         name="John Doe",
@@ -134,7 +136,7 @@ debit = await client.debit(
 If you want to point the SDK at your own local backend instead of our hosted Sandbox, you can use the `custom_base_url` parameter (restricted to `localhost` and `127.0.0.1`).
 
 ```python
-async with WhireClient(api_key="whire_sk_test", custom_base_url="http://localhost:8000") as client:
+async with WhireClient(api_key="whire_test_key", custom_base_url="http://localhost:8000") as client:
     pass  # Your backend handles the requests
 ```
 
