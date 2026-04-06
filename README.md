@@ -4,345 +4,141 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/whire.svg)](https://pypi.org/project/whire/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-The Whire Python SDK provides convenient access to the [Whire Payments API](https://docs.whire.ai) from Python applications. It includes support for instant payments, direct debit mandates, and a built-in agent toolkit for LLMs.
+**Payment infrastructure built specifically for AI agents.** Whire bridges the gap between unpredictable LLMs and rigid financial APIs. It provides a native agent toolkit and MCP server, allowing your LLMs to safely and programmatically execute instant SEPA payments and direct debits in Europe.
 
-> **Note:** This SDK is currently in sandbox mode. All data and transactions are simulated — no real money is moved. 
-> To get sandbox API keys, email [support@whire.ai](mailto:support@whire.ai).
+### See it in action:
 
-## Requirements
+![Image](https://github.com/user-attachments/assets/47c90560-783b-42ea-a645-131627e50bb6)
 
-- Python 3.11+
+## Quickstart: The Magic (Sandbox Mode)
 
-## Installation
+The SDK is currently in an open Sandbox. Transactions are fully mocked so you can test agentic workflows without moving real money.
+
+> **Zero friction:** Use the public test key `whire_test_key` to try it locally right now.
+
+### 1. Install
 
 ```bash
 pip install whire
 ```
 
-## Environments
-
-The SDK supports three modes of operation:
-
-| Mode | Base URL | Use case |
-|---|---|---|
-| **Production** | `https://api.whire.ai` | Live payments with real money |
-| **Sandbox** | `https://sandbox.whire.ai` | Testing with Whire's hosted sandbox (simulated transactions) |
-| **Local** | `http://localhost:*` | Your own backend returning mock data |
-
-### Sandbox (recommended for getting started)
-
-Connect to Whire's hosted sandbox. Transactions are simulated — no real money moves.
-
-```python
-from whire import WhireClient, Environment
-
-async with WhireClient(api_key="whire_sk_...", environment=Environment.SANDBOX) as client:
-    result = await client.pay(...)
-```
-
-### Production
-
-Switch to production when you're ready to move real money.
-
-```python
-async with WhireClient(api_key="whire_sk_...", environment=Environment.PRODUCTION) as client:
-    result = await client.pay(...)
-```
-
-### Local development (custom backend)
-
-Point the SDK at your own backend to test with mock data you control. The `custom_base_url` parameter accepts `localhost` and `127.0.0.1` addresses only.
-
-```python
-async with WhireClient(
-    api_key="whire_sk_test",  # any valid-looking key — your backend decides auth
-    custom_base_url="http://localhost:8000",
-) as client:
-    result = await client.pay(
-        recipient_id="rcpt-mock-001",
-        amount="50.00",
-        label="Test payment",
-    )
-```
-
-Your backend needs to implement the same REST endpoints and return the same JSON shapes. Here are the endpoints and their expected response formats:
-
-<details>
-<summary>Endpoint reference for local mock servers</summary>
-
-**POST /recipients** — create a recipient
-```json
-{
-  "id": "rcpt-001",
-  "name": "John Doe",
-  "iban": "FR7630006000011234567890189",
-  "country": "FRA",
-  "label": "Landlord",
-  "created_at": "2025-01-15T10:30:00Z"
-}
-```
-
-**GET /recipients?search=...&offset=0&limit=20** — list recipients
-```json
-{
-  "items": [{ "id": "rcpt-001", "name": "John Doe", "iban": "FR76...", "created_at": "..." }],
-  "total": 1,
-  "offset": 0,
-  "limit": 20
-}
-```
-
-**GET /recipients/{id}** — get a single recipient (same shape as create)
-
-**POST /payments/send** — send a payment
-```json
-{
-  "receipt_id": "pay-001",
-  "status": "completed",
-  "transaction_id": "txn-001",
-  "amount_charged": "50.00",
-  "currency": "EUR",
-  "processor_message": "Payment processed",
-  "error_code": null,
-  "consent_url": null,
-  "processed_at": "2025-01-15T10:30:00Z"
-}
-```
-
-**GET /payments/status/{id}** — payment status
-```json
-{
-  "payment_id": "pay-001",
-  "status": "completed",
-  "created_at": "2025-01-15T10:30:00Z"
-}
-```
-
-**GET /payments/balance** — account balance
-```json
-{
-  "available": { "value": "1000.00", "currency": "EUR" },
-  "booked": { "value": "950.00", "currency": "EUR" }
-}
-```
-
-**GET /payments/transactions?limit=20** — transaction history
-```json
-{
-  "transactions": [
-    {
-      "id": "txn-001",
-      "type": "payment",
-      "side": "debit",
-      "amount": "50.00",
-      "currency": "EUR",
-      "label": "Invoice #42",
-      "status": "completed",
-      "created_at": "2025-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
-**POST /payments/mandates** — create a mandate
-```json
-{
-  "mandate_id": "mdt-001",
-  "status": "active",
-  "recipient_name": "Jane Doe",
-  "recipient_iban": "DE89370400440532013000",
-  "sequence": "Recurrent"
-}
-```
-
-**POST /payments/debit** — collect via mandate
-```json
-{
-  "payment_id": "dbt-001",
-  "status": "pending",
-  "amount": "25.00",
-  "currency": "EUR",
-  "label": "Monthly subscription",
-  "message": "Debit initiated",
-  "created_at": "2025-01-15T10:30:00Z"
-}
-```
-
-</details>
-
-## Usage
-
-### Instant payments
-
-```python
-from whire import WhireClient, Environment
-
-async with WhireClient(api_key="whire_sk_...", environment=Environment.SANDBOX) as client:
-    # Create a recipient (stores their bank details securely)
-    recipient = await client.create_recipient(
-        name="John Doe",
-        account_number="FR7630006000011234567890189",
-    )
-
-    # Send a payment
-    result = await client.pay(
-        recipient_id=recipient.recipient_id,
-        amount="50.00",
-        label="Invoice #42",
-    )
-
-    # The user must approve the payment by visiting the consent URL.
-    if result.consent.requires_consent:
-        print(f"Approve payment: {result.consent.consent_url}")
-
-    # Poll until the payment settles.
-    status = await client.get_payment_status(result.transaction_id)
-```
-
-### Balance and transaction history
-
-```python
-balance = await client.get_balance()
-print(f"Available: {balance.available} {balance.available_currency}")
-
-transactions = await client.get_transactions(limit=10)
-for t in transactions.transactions:
-    print(f"{t.created_at}  {t.side:>5}  {t.amount} {t.currency}  {t.label}")
-```
-
-### Recipients
-
-```python
-# Search for existing recipients
-results = await client.list_recipients(search="John")
-for r in results.items:
-    print(f"{r.recipient_id}  {r.name}  {r.label}")
-
-# Get a specific recipient
-recipient = await client.get_recipient("a1b2c3d4-...")
-```
-
-### Direct debit
-
-Create a recipient and mandate once, then collect payments without per-transaction approval.
-
-```python
-recipient = await client.create_recipient(
-    name="Jane Doe",
-    account_number="DE89370400440532013000",
-    country="DEU",
-)
-
-mandate = await client.create_mandate(recipient_id=recipient.recipient_id)
-
-debit = await client.debit(
-    mandate_id=mandate.mandate_id,
-    amount="25.00",
-    label="Monthly subscription",
-)
-# Settlement takes 1-2 business days.
-```
-
-### Configuration
-
-| Parameter | Default | Description |
-|---|---|---|
-| `api_key` | *required* | Your Whire API key |
-| `environment` | `Environment.PRODUCTION` | `PRODUCTION` or `SANDBOX` |
-| `custom_base_url` | `None` | Override for local testing (`localhost` / `127.0.0.1` only) |
-| `timeout` | `30.0` | HTTP timeout in seconds |
-| `max_retries` | `3` | Max retry attempts on 429 / 5xx / network errors |
-| `retry_base_delay` | `0.5` | Base delay (seconds) for exponential backoff |
-
-## AI agent toolkit
+### 2. Run your first Agentic Payment
 
 `WhireToolkit` wraps the client into a tool-calling interface compatible with OpenAI, Anthropic, and other function-calling LLMs.
 
 ```python
+import asyncio
 from whire import WhireToolkit, Environment
 
-async with WhireToolkit(api_key="whire_sk_...", environment=Environment.SANDBOX) as toolkit:
-    # Inject into your agent
-    system_prompt = toolkit.system_prompt
-    tools = toolkit.get_tools()
+async def run_agent():
+    # Example Prompt: "Claude, pay my €150 AWS hosting bill to Alice Martin."
 
-    # Execute tool calls returned by the model
-    recipient = await toolkit.execute("create_recipient", {
-        "name": "John Doe",
-        "account_number": "FR7630006000011234567890189",
-    })
+    # Initialize the toolkit with our public sandbox key
+    async with WhireToolkit(api_key="whire_test_mock123", environment=Environment.SANDBOX) as toolkit:
 
-    result = await toolkit.execute("send_payment", {
-        "recipient_id": recipient["recipient_id"],
-        "amount": "50.00",
-        "label": "Invoice #42",
-    })
+        # Step 1: Agent autonomously creates the recipient
+        recipient = await toolkit.execute("create_recipient", {
+            "name": "Alice Martin",
+            "account_number": "FR7630006000011234567890189",
+            "label": "AWS Supplier"
+        })
+
+        # Step 2: Agent initiates the transfer
+        payment = await toolkit.execute("send_payment", {
+            "recipient_id": recipient["recipient_id"],
+            "amount": "150.00",
+            "label": "AWS March Invoice"
+        })
+
+        # Step 3: Humans stay in the loop for security
+        if payment.get("consent_url"):
+            print(f"ACTION REQUIRED: Approve transfer here: {payment['consent_url']}")
+
+if __name__ == "__main__":
+    asyncio.run(run_agent())
 ```
 
-### Available tools
+## MCP Server (Claude Desktop)
 
-| Tool | Description | Requires user approval | Settlement |
-|---|---|---|---|
-| `create_recipient` | Store recipient bank details | No | — |
-| `list_recipients` | List or search recipients | No | — |
-| `get_recipient` | Get recipient details | No | — |
-| `send_payment` | Send an instant payment | Yes (consent URL) | Seconds |
-| `get_payment_status` | Check payment status | No | — |
-| `get_balance` | Check account balance | No | — |
-| `get_transactions` | View transaction history | No | — |
-| `create_mandate` | Create a direct debit mandate | No | — |
-| `debit_payment` | Collect via an existing mandate | No | 1-2 days |
+Developers building on Claude Desktop can plug Whire in natively. The SDK ships with a built-in [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server.
 
-## MCP server (Claude Desktop)
-
-The SDK ships with a built-in [MCP](https://modelcontextprotocol.io) server for Claude Desktop and other MCP-compatible clients.
-
-Add to your Claude Desktop config (`claude_desktop_config.json`):
+Add this to your Claude Desktop config (`claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "whire": {
       "command": "python",
-      "args": ["-m", "whire.mcp_server"],
+      "args": [
+        "-m",
+        "whire.mcp_server"
+      ],
       "env": {
-        "WHIRE_API_KEY": "whire_sk_..."
+        "WHIRE_API_KEY": "whire_test_mock123"
       }
     }
   }
 }
 ```
 
-## Error handling
+> **Note:** Swap the test key for your production key when moving to live environments.
 
-All errors inherit from `WhireError` and include structured metadata that agents can use to decide what to do next.
+## Why Whire?
+
+If you try to let an LLM write its own REST API calls to a traditional payment gateway, it will fail. LLMs hallucinate JSON structures, fail at multi-step financial compliance, and struggle to manage API state.
+
+Whire solves this by enforcing strict schemas, managing local state, and handling the orchestration natively. We also return structured error metadata (like `needs_user_action`) so the agent knows exactly how to recover if a payment fails.
+
+## The Plumbing: Standard SDK Usage
+
+For backend engineers who want to bypass the AI toolkit and use Whire as a traditional payment gateway, you can interface directly with the `WhireClient`.
+
+### Instant Payments
 
 ```python
-from whire import WhireError, AuthenticationError
+from whire import WhireClient, Environment
 
-try:
-    result = await client.pay(...)
-except AuthenticationError:
-    # Invalid or expired API key (HTTP 401)
-    ...
-except WhireError as e:
-    print(e.message)       # Human-readable message
-    print(e.error_code)    # Machine-readable code
-    print(e.status_code)   # HTTP status code (if applicable)
-    print(e.is_retryable)  # Safe to retry?
-    print(e.is_input_error)    # Bad parameters — fix and retry
-    print(e.needs_user_action) # User must do something (e.g. add funds)
+async with WhireClient(api_key="whire_test_mock123", environment=Environment.SANDBOX) as client:
+    # 1. Create a recipient
+    recipient = await client.create_recipient(
+        name="John Doe",
+        account_number="FR7630006000011234567890189"
+    )
+
+    # 2. Send a payment
+    result = await client.pay(
+        recipient_id=recipient.recipient_id,
+        amount="50.00",
+        label="Invoice #42"
+    )
 ```
 
-### Exception types
+### Balances & Direct Debits
 
-| Exception | When |
-|---|---|
-| `AuthenticationError` | Invalid API key |
-| `PaymentError` | Payment request fails |
-| `MandateError` | Mandate operation fails |
-| `ValidationError` | Invalid parameters (HTTP 422) |
-| `WhireError` | Everything else |
+```python
+# Check Balance
+balance = await client.get_balance()
+print(f"Available: {balance.available} {balance.available_currency}")
+
+# Create Direct Debit Mandate
+mandate = await client.create_mandate(recipient_id=recipient.recipient_id)
+debit = await client.debit(
+    mandate_id=mandate.mandate_id,
+    amount="25.00",
+    label="Monthly subscription"
+)
+```
+
+## Local Testing & Mock Data
+
+If you want to point the SDK at your own local backend instead of our hosted Sandbox, you can use the `custom_base_url` parameter (restricted to `localhost` and `127.0.0.1`).
+
+```python
+async with WhireClient(api_key="whire_sk_test", custom_base_url="http://localhost:8000") as client:
+    pass  # Your backend handles the requests
+```
+
+For a complete reference of the required JSON shapes and REST endpoints your local server needs to mock, please read [TESTING_LOCALLY.md](TESTING_LOCALLY.md).
 
 ## License
 
