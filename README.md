@@ -19,6 +19,157 @@ The Whire Python SDK provides convenient access to the [Whire Payments API](http
 pip install whire
 ```
 
+## Environments
+
+The SDK supports three modes of operation:
+
+| Mode | Base URL | Use case |
+|---|---|---|
+| **Production** | `https://api.whire.ai` | Live payments with real money |
+| **Sandbox** | `https://sandbox.whire.ai` | Testing with Whire's hosted sandbox (simulated transactions) |
+| **Local** | `http://localhost:*` | Your own backend returning mock data |
+
+### Sandbox (recommended for getting started)
+
+Connect to Whire's hosted sandbox. Transactions are simulated — no real money moves.
+
+```python
+from whire import WhireClient, Environment
+
+async with WhireClient(api_key="whire_sk_...", environment=Environment.SANDBOX) as client:
+    result = await client.pay(...)
+```
+
+### Production
+
+Switch to production when you're ready to move real money.
+
+```python
+async with WhireClient(api_key="whire_sk_...", environment=Environment.PRODUCTION) as client:
+    result = await client.pay(...)
+```
+
+### Local development (custom backend)
+
+Point the SDK at your own backend to test with mock data you control. The `custom_base_url` parameter accepts `localhost` and `127.0.0.1` addresses only.
+
+```python
+async with WhireClient(
+    api_key="whire_sk_test",  # any valid-looking key — your backend decides auth
+    custom_base_url="http://localhost:8000",
+) as client:
+    result = await client.pay(
+        recipient_id="rcpt-mock-001",
+        amount="50.00",
+        label="Test payment",
+    )
+```
+
+Your backend needs to implement the same REST endpoints and return the same JSON shapes. Here are the endpoints and their expected response formats:
+
+<details>
+<summary>Endpoint reference for local mock servers</summary>
+
+**POST /recipients** — create a recipient
+```json
+{
+  "id": "rcpt-001",
+  "name": "John Doe",
+  "iban": "FR7630006000011234567890189",
+  "country": "FRA",
+  "label": "Landlord",
+  "created_at": "2025-01-15T10:30:00Z"
+}
+```
+
+**GET /recipients?search=...&offset=0&limit=20** — list recipients
+```json
+{
+  "items": [{ "id": "rcpt-001", "name": "John Doe", "iban": "FR76...", "created_at": "..." }],
+  "total": 1,
+  "offset": 0,
+  "limit": 20
+}
+```
+
+**GET /recipients/{id}** — get a single recipient (same shape as create)
+
+**POST /payments/send** — send a payment
+```json
+{
+  "receipt_id": "pay-001",
+  "status": "completed",
+  "transaction_id": "txn-001",
+  "amount_charged": "50.00",
+  "currency": "EUR",
+  "processor_message": "Payment processed",
+  "error_code": null,
+  "consent_url": null,
+  "processed_at": "2025-01-15T10:30:00Z"
+}
+```
+
+**GET /payments/status/{id}** — payment status
+```json
+{
+  "payment_id": "pay-001",
+  "status": "completed",
+  "created_at": "2025-01-15T10:30:00Z"
+}
+```
+
+**GET /payments/balance** — account balance
+```json
+{
+  "available": { "value": "1000.00", "currency": "EUR" },
+  "booked": { "value": "950.00", "currency": "EUR" }
+}
+```
+
+**GET /payments/transactions?limit=20** — transaction history
+```json
+{
+  "transactions": [
+    {
+      "id": "txn-001",
+      "type": "payment",
+      "side": "debit",
+      "amount": "50.00",
+      "currency": "EUR",
+      "label": "Invoice #42",
+      "status": "completed",
+      "created_at": "2025-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**POST /payments/mandates** — create a mandate
+```json
+{
+  "mandate_id": "mdt-001",
+  "status": "active",
+  "recipient_name": "Jane Doe",
+  "recipient_iban": "DE89370400440532013000",
+  "sequence": "Recurrent"
+}
+```
+
+**POST /payments/debit** — collect via mandate
+```json
+{
+  "payment_id": "dbt-001",
+  "status": "pending",
+  "amount": "25.00",
+  "currency": "EUR",
+  "label": "Monthly subscription",
+  "message": "Debit initiated",
+  "created_at": "2025-01-15T10:30:00Z"
+}
+```
+
+</details>
+
 ## Usage
 
 ### Instant payments
@@ -94,13 +245,11 @@ debit = await client.debit(
 
 ### Configuration
 
-The client accepts the following options:
-
 | Parameter | Default | Description |
 |---|---|---|
 | `api_key` | *required* | Your Whire API key |
 | `environment` | `Environment.PRODUCTION` | `PRODUCTION` or `SANDBOX` |
-| `custom_base_url` | `None` | Override for local testing (localhost only) |
+| `custom_base_url` | `None` | Override for local testing (`localhost` / `127.0.0.1` only) |
 | `timeout` | `30.0` | HTTP timeout in seconds |
 | `max_retries` | `3` | Max retry attempts on 429 / 5xx / network errors |
 | `retry_base_delay` | `0.5` | Base delay (seconds) for exponential backoff |
