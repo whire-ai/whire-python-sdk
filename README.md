@@ -1,5 +1,9 @@
 # Whire Python SDK
 
+[![PyPI version](https://img.shields.io/pypi/v/whire.svg)](https://pypi.org/project/whire/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/whire.svg)](https://pypi.org/project/whire/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 The Whire Python SDK provides convenient access to the [Whire Payments API](https://docs.whire.ai) from Python applications. It includes support for instant payments, direct debit mandates, and a built-in agent toolkit for LLMs.
 
 > **Note:** This SDK is currently in sandbox mode. All data and transactions are simulated — no real money is moved. 
