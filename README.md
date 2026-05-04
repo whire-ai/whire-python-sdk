@@ -98,26 +98,32 @@ For backend engineers who want to bypass the AI toolkit and use Whire as a tradi
 ### Instant Payments
 
 ```python
+import asyncio
 from whire import WhireClient, Environment
 
-async with WhireClient(api_key="whire_test_key", environment=Environment.SANDBOX) as client:
-    # 1. Create a recipient
-    recipient = await client.create_recipient(
-        name="John Doe",
-        account_number="FR7630006000011234567890189"
-    )
+async def main():
+    async with WhireClient(api_key="whire_test_key", environment=Environment.SANDBOX) as client:
+        # 1. Create a recipient
+        recipient = await client.create_recipient(
+            name="John Doe",
+            account_number="FR7630006000011234567890189"
+        )
 
-    # 2. Send a payment
-    result = await client.pay(
-        recipient_id=recipient.recipient_id,
-        amount="50.00",
-        label="Invoice #42"
-    )
+        # 2. Send a payment
+        result = await client.pay(
+            recipient_id=recipient.recipient_id,
+            amount="50.00",
+            label="Invoice #42"
+        )
+
+asyncio.run(main())
 ```
 
 ### Balances & Direct Debits
 
 ```python
+# Inside an async context with an initialized client:
+
 # Check Balance
 balance = await client.get_balance()
 print(f"Available: {balance.available} {balance.available_currency}")
